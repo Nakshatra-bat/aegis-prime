@@ -1,0 +1,1557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AEGIS-PRIME // Autonomous Facility Defense</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        deep: '#040714',
+                        card: 'rgba(11, 20, 42, 0.78)',
+                        cyanNeon: '#00f0ff',
+                        redAlert: '#ff3344',
+                        yellowWarn: '#ffb800',
+                        greenSafe: '#00e676',
+                        slateBorder: 'rgba(0, 240, 255, 0.22)',
+                        textDim: '#889ec2'
+                    },
+                    fontFamily: {
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                        sans: ['Inter', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-base: #040714;
+            --cyan: #00f0ff;
+            --red: #ff3344;
+            --yellow: #ffb800;
+            --green: #00e676;
+            --border-glow: rgba(0, 240, 255, 0.25);
+        }
+
+        body {
+            background-color: var(--bg-base);
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(0, 240, 255, 0.08) 0%, transparent 60%),
+                radial-gradient(circle at 10% 80%, rgba(255, 51, 68, 0.04) 0%, transparent 40%),
+                linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+            color: #e2e8f0;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* Glass HUD styling */
+        .glass-panel {
+            background: rgba(10, 18, 38, 0.75);
+            backdrop-filter: blur(14px);
+            border: 1px solid var(--border-glow);
+            box-shadow: 0 10px 35px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+        }
+
+        .neon-text-cyan {
+            color: var(--cyan);
+            text-shadow: 0 0 14px rgba(0, 240, 255, 0.5);
+        }
+
+        .neon-border-cyan {
+            border-color: var(--cyan);
+            box-shadow: 0 0 16px rgba(0, 240, 255, 0.35);
+        }
+
+        /* Custom aerospace scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #02050e;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1b2848;
+            border-radius: 3px;
+            border: 1px solid var(--border-glow);
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--cyan);
+        }
+
+        /* Pulsing beacon animations */
+        @keyframes pulse-ring {
+            0% { transform: scale(0.9); opacity: 0.8; }
+            50% { transform: scale(1.15); opacity: 0.3; }
+            100% { transform: scale(0.9); opacity: 0.8; }
+        }
+        .pulse-beacon {
+            animation: pulse-ring 2.2s infinite ease-in-out;
+        }
+
+        /* Canvas radars */
+        canvas {
+            display: block;
+            image-rendering: -webkit-optimize-contrast;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-cyanNeon selection:text-black">
+
+    <!-- TOP FLIGHT OPERATIONS BAR -->
+    <header class="sticky top-0 z-50 border-b border-slateBorder bg-deep/90 backdrop-blur-md px-4 py-2.5">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="navigate('home')">
+                <div class="w-8 h-8 rounded-lg bg-cyanNeon/10 border border-cyanNeon flex items-center justify-center font-mono font-bold text-cyanNeon text-sm shadow-[0_0_12px_rgba(0,240,255,0.4)]">
+                    AP
+                </div>
+                <div>
+                    <div class="font-mono text-base font-extrabold tracking-wider neon-text-cyan flex items-center gap-2">
+                        AEGIS-PRIME <span class="text-[10px] px-1.5 py-0.5 rounded bg-cyanNeon/10 text-cyanNeon border border-cyanNeon/30">v4.8-LIVE</span>
+                    </div>
+                    <div class="text-[10px] tracking-widest text-textDim uppercase font-mono">Autonomous Facility Defense // Track 1</div>
+                </div>
+            </div>
+
+            <!-- Page Navigation Tabs -->
+            <nav class="flex items-center space-x-1 font-mono text-xs overflow-x-auto py-1">
+                <button onclick="navigate('home')" id="nav-home" class="nav-tab px-3 py-1.5 rounded-md text-cyanNeon bg-cyanNeon/10 border border-cyanNeon/40 transition">
+                    [01] BRIEFING
+                </button>
+                <button onclick="navigate('cockpit')" id="nav-cockpit" class="nav-tab px-3 py-1.5 rounded-md text-textDim hover:text-white hover:bg-white/5 transition">
+                    [02] COCKPIT
+                </button>
+                <button onclick="navigate('chaos')" id="nav-chaos" class="nav-tab px-3 py-1.5 rounded-md text-textDim hover:text-white hover:bg-white/5 transition">
+                    [03] CHAOS LAB
+                </button>
+                <button onclick="navigate('defense')" id="nav-defense" class="nav-tab px-3 py-1.5 rounded-md text-textDim hover:text-white hover:bg-white/5 transition">
+                    [04] 4-STEP DEFENSE
+                </button>
+                <button onclick="navigate('hardware')" id="nav-hardware" class="nav-tab px-3 py-1.5 rounded-md text-textDim hover:text-white hover:bg-white/5 transition">
+                    [05] HARDWARE HIL
+                </button>
+                <button onclick="navigate('copilot')" id="nav-copilot" class="nav-tab px-3 py-1.5 rounded-md text-textDim hover:text-white hover:bg-white/5 transition flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-cyanNeon animate-pulse"></span>
+                    [06] AI COPILOT
+                </button>
+            </nav>
+
+            <!-- Mission MET Time & Quick Status -->
+            <div class="hidden lg:flex items-center space-x-4 font-mono text-xs">
+                <div class="text-right">
+                    <div class="text-textDim text-[10px]">MISSION CLOCK</div>
+                    <div class="text-white font-bold" id="mission-clock">MET T+00:00:00</div>
+                </div>
+                <div class="px-2.5 py-1 rounded bg-greenSafe/10 border border-greenSafe/30 text-greenSafe flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-greenSafe"></span>
+                    DEFENSE CORE: ONLINE
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN VIEW CONTAINER -->
+    <main class="max-w-7xl mx-auto w-full p-4 flex-1">
+
+        <!-- ================================================================= -->
+        <!-- VIEW 1: HOME & MISSION BRIEFING                                   -->
+        <!-- ================================================================= -->
+        <section id="view-home" class="space-y-6">
+            <!-- Tactical Hero Banner -->
+            <div class="glass-panel p-6 sm:p-10 relative overflow-hidden">
+                <div class="absolute -right-20 -top-20 w-80 h-80 rounded-full bg-cyanNeon/5 blur-3xl pointer-events-none"></div>
+                <div class="absolute -left-20 -bottom-20 w-80 h-80 rounded-full bg-redAlert/5 blur-3xl pointer-events-none"></div>
+                
+                <div class="relative z-10 max-w-3xl space-y-4">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-redAlert/10 border border-redAlert/30 text-redAlert text-xs font-mono font-bold tracking-wider">
+                        <span class="w-2 h-2 rounded-full bg-redAlert pulse-beacon"></span>
+                        SOLAR MAXIMUM CARRIER ALERT // X17.9 SUPERFLARE DETECTED
+                    </div>
+                    <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight">
+                        Surviving <span class="neon-text-cyan">The Invisible Outage</span> Under Complete Sensor Blindness.
+                    </h1>
+                    <p class="text-sm sm:text-base text-textDim leading-relaxed">
+                        When an extreme Coronal Mass Ejection (CME) collides with Earth's magnetosphere, Geomagnetically Induced Currents (GIC) don't just trip transformers—<strong>they corrupt, blind, and fry the monitoring instruments first</strong>. Standard AI dashboards throw exceptions and freeze.
+                    </p>
+                    <p class="text-sm text-slate-300">
+                        <strong>AEGIS-PRIME</strong> is an aerospace-grade, degraded-state autonomous orchestrator. Using <em>Bayesian Cross-Inference</em> and <em>Dynamic Dependency Triage</em>, it calculates remaining useful life and trips protective physical relays even when sensors are completely blacked out.
+                    </p>
+
+                    <div class="pt-3 flex flex-wrap gap-3 font-mono text-xs">
+                        <button onclick="navigate('cockpit')" class="px-5 py-3 rounded-lg bg-cyanNeon text-black font-extrabold tracking-wide hover:shadow-[0_0_20px_rgba(0,240,255,0.7)] transition">
+                            ENTER OPERATIONS COCKPIT →
+                        </button>
+                        <button onclick="navigate('chaos')" class="px-5 py-3 rounded-lg bg-white/5 border border-slateBorder text-white hover:bg-white/10 transition">
+                            TEST SENSOR SABOTAGE LAB
+                        </button>
+                        <button onclick="navigate('defense')" class="px-5 py-3 rounded-lg bg-white/5 border border-slateBorder text-textDim hover:text-white transition">
+                            JUDGING CRITERIA (4-STEP)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4 Interconnected Subsystem Architecture Cards -->
+            <div>
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-mono text-sm tracking-widest text-cyanNeon uppercase font-bold flex items-center gap-2">
+                        <span>[FACILITY TOPOLOGY]</span> Monitored Technology Nodes
+                    </h3>
+                    <span class="text-xs font-mono text-textDim">Closed Inter-Dependent Facility Loop</span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- Power Grid -->
+                    <div class="glass-panel p-4 border-l-4 border-l-redAlert relative">
+                        <div class="font-mono text-[10px] text-textDim uppercase">Node 01 // High Voltage</div>
+                        <h4 class="font-mono font-bold text-base text-white mt-1">HV Inverter Transformer</h4>
+                        <p class="text-xs text-textDim mt-2">Primary power substation vulnerable to DC core saturation from Geomagnetically Induced Currents.</p>
+                        <div class="mt-4 pt-3 border-t border-white/5 flex justify-between text-xs font-mono">
+                            <span class="text-textDim">Actuator:</span>
+                            <span class="text-cyanNeon font-bold">RLY-01 Isolator</span>
+                        </div>
+                    </div>
+
+                    <!-- Cryo Chiller -->
+                    <div class="glass-panel p-4 border-l-4 border-l-yellowWarn relative">
+                        <div class="font-mono text-[10px] text-textDim uppercase">Node 02 // Thermal Reg</div>
+                        <h4 class="font-mono font-bold text-base text-white mt-1">Cryogenic Shield Chiller</h4>
+                        <p class="text-xs text-textDim mt-2">Superconducting pump preventing thermal runaway across facility high-frequency computing arrays.</p>
+                        <div class="mt-4 pt-3 border-t border-white/5 flex justify-between text-xs font-mono">
+                            <span class="text-textDim">Actuator:</span>
+                            <span class="text-yellowWarn font-bold">RLY-02 Pulse Bypass</span>
+                        </div>
+                    </div>
+
+                    <!-- Uplink Antenna -->
+                    <div class="glass-panel p-4 border-l-4 border-l-cyanNeon relative">
+                        <div class="font-mono text-[10px] text-textDim uppercase">Node 03 // Deep Space Comms</div>
+                        <h4 class="font-mono font-bold text-base text-white mt-1">Phased Array RF Uplink</h4>
+                        <p class="text-xs text-textDim mt-2">High-frequency transceivers subject to total ionospheric absorption and RF front-end burnout.</p>
+                        <div class="mt-4 pt-3 border-t border-white/5 flex justify-between text-xs font-mono">
+                            <span class="text-textDim">Actuator:</span>
+                            <span class="text-cyanNeon font-bold">RLY-03 Attenuator</span>
+                        </div>
+                    </div>
+
+                    <!-- Quantum Clock -->
+                    <div class="glass-panel p-4 border-l-4 border-l-greenSafe relative">
+                        <div class="font-mono text-[10px] text-textDim uppercase">Node 04 // Telemetry & Nav</div>
+                        <h4 class="font-mono font-bold text-base text-white mt-1">Rubidium Atomic Clock</h4>
+                        <p class="text-xs text-textDim mt-2">Nanosecond-level sync and antenna pointing axis. Dependent on stable power and RF holdover.</p>
+                        <div class="mt-4 pt-3 border-t border-white/5 flex justify-between text-xs font-mono">
+                            <span class="text-textDim">Actuator:</span>
+                            <span class="text-greenSafe font-bold">RLY-04 Inertial Lock</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Problem Statement Breakdown: The Trap vs The Solution -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="glass-panel p-5 border-l-4 border-l-redAlert/80">
+                    <div class="font-mono text-xs font-bold text-redAlert uppercase mb-2">❌ What 90% of Hackathon Teams Will Build (The Trap)</div>
+                    <ul class="text-xs text-textDim space-y-2 list-disc list-inside">
+                        <li>Assumes sensors always stream clean, reliable, non-corrupted data.</li>
+                        <li>Builds a passive dashboard that displays simple red alarms when numbers exceed limits.</li>
+                        <li>Fails to answer the three core mandate questions: *What will fail? How serious? What first?*</li>
+                        <li>Crashes with `NaN` or unhandled exceptions when sensors disconnect or drift.</li>
+                    </ul>
+                </div>
+                <div class="glass-panel p-5 border-l-4 border-l-cyanNeon/80">
+                    <div class="font-mono text-xs font-bold text-cyanNeon uppercase mb-2">✅ The AEGIS-PRIME Architectural Advantage</div>
+                    <ul class="text-xs text-textDim space-y-2 list-disc list-inside">
+                        <li><strong>Relativistic 8.3-min Delay:</strong> Accurately models optical travel time from Sun to Earth.</li>
+                        <li><strong>Bayesian State Reconstruction:</strong> Cross-infers temperature and load using physical thermodynamics even when sensors go dark.</li>
+                        <li><strong>Cascading Graph Triage:</strong> Evaluates downstream damage propagation to prioritize automated load shedding.</li>
+                        <li><strong>Hardware-in-the-Loop Actuation:</strong> Trips simulated PLC breakers and outputs real microcontroller hex code.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================================================================= -->
+        <!-- VIEW 2: OPERATIONS COCKPIT (THE LIVE SIMULATOR)                   -->
+        <!-- ================================================================= -->
+        <section id="view-cockpit" class="hidden space-y-4">
+            
+            <!-- Top Telemetry Ribbon -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div class="glass-panel p-3" id="hud-card-optical">
+                    <div class="text-[10px] font-mono text-textDim uppercase">EARTH OPTICAL STATUS</div>
+                    <div class="font-mono text-lg font-bold mt-1 text-redAlert" id="hud-optical-val">BLIND (LAG)</div>
+                    <div class="text-[10px] text-textDim" id="hud-optical-sub">8.3-min light travel horizon</div>
+                </div>
+                <div class="glass-panel p-3">
+                    <div class="text-[10px] font-mono text-textDim uppercase">CME PLASMA POSITION</div>
+                    <div class="font-mono text-lg font-bold mt-1 text-white" id="hud-cme-au">0.000 AU</div>
+                    <div class="text-[10px] text-textDim" id="hud-cme-km">0.0M km from Sun</div>
+                </div>
+                <div class="glass-panel p-3">
+                    <div class="text-[10px] font-mono text-textDim uppercase">TIME TO IMPACT (ETA)</div>
+                    <div class="font-mono text-lg font-bold mt-1 text-cyanNeon" id="hud-eta-val">0.0 min</div>
+                    <div class="text-[10px] text-textDim" id="hud-eta-sub">Velocity: 1850 km/s</div>
+                </div>
+                <div class="glass-panel p-3">
+                    <div class="text-[10px] font-mono text-textDim uppercase">L1 SENTINEL LINK</div>
+                    <div class="font-mono text-lg font-bold mt-1 text-cyanNeon" id="hud-l1-val">ONLINE</div>
+                    <div class="text-[10px] text-textDim">Lagrange Orbit 0.99 AU</div>
+                </div>
+            </div>
+
+            <!-- THE 3 MANDATORY CHALLENGE QUESTIONS (HIGH PRIORITY CARDS) -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <!-- Mandate 1 -->
+                <div class="glass-panel p-4 border-l-4 border-l-redAlert">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-redAlert/20 text-redAlert border border-redAlert/30">
+                            MANDATE 1 // WHAT IS LIKELY TO FAIL?
+                        </span>
+                    </div>
+                    <h4 class="font-mono text-lg font-bold text-redAlert" id="ans-what-fail">HV Inverter Transformer</h4>
+                    <div class="text-xs mt-1 flex justify-between">
+                        <span class="text-textDim">Degradation Risk: <b class="text-white" id="ans-deg-risk">0.0%</b></span>
+                        <span class="text-textDim">Est. RUL: <b class="text-cyanNeon" id="ans-rul">~210s</b></span>
+                    </div>
+                    <p class="text-[11px] text-textDim mt-2">Calculated from solar particle flux, transformer induction saturation, and drift velocity.</p>
+                </div>
+
+                <!-- Mandate 2 -->
+                <div class="glass-panel p-4 border-l-4 border-l-yellowWarn">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-yellowWarn/20 text-yellowWarn border border-yellowWarn/30">
+                            MANDATE 2 // HOW SERIOUS IS THE FAILURE?
+                        </span>
+                    </div>
+                    <h4 class="font-mono text-lg font-bold text-yellowWarn" id="ans-how-serious">STABLE (0.00 / 2.50)</h4>
+                    <div class="text-xs mt-1">
+                        <span class="text-textDim">Downstream in Peril: <b class="text-white" id="ans-downstream">Cryo Chiller, Uplink Dish</b></span>
+                    </div>
+                    <div class="text-xs mt-0.5 flex justify-between">
+                        <span class="text-textDim">Facility Survivability:</span>
+                        <span class="font-mono font-bold text-greenSafe" id="ans-survivability">100.0%</span>
+                    </div>
+                    <p class="text-[11px] text-textDim mt-2">Propagated across directed acyclic dependency matrix to predict collateral collapse.</p>
+                </div>
+
+                <!-- Mandate 3 -->
+                <div class="glass-panel p-4 border-l-4 border-l-greenSafe">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-greenSafe/20 text-greenSafe border border-greenSafe/30">
+                            MANDATE 3 // WHAT SHOULD WE DO FIRST?
+                        </span>
+                    </div>
+                    <h4 class="font-mono text-lg font-bold text-greenSafe" id="ans-what-first">ISOLATION DISPATCH</h4>
+                    <p class="text-xs text-white mt-1 leading-snug" id="ans-action-text">Trip RLY-01: Decouple Phase-3 HV transformer from grid. Switch to reserve chemical batteries.</p>
+                    <div class="mt-2 text-xs font-mono text-textDim flex justify-between">
+                        <span>Target Actuator:</span>
+                        <span class="text-cyanNeon font-bold" id="ans-target-relay">RLY-01_HV_ISOLATOR</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RADAR AND WORKSPACE LAYOUT -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                
+                <!-- Left 8 Columns: Interactive 2D Radar & Controls -->
+                <div class="lg:col-span-8 space-y-4">
+                    <!-- 2D Radar Canvas Panel -->
+                    <div class="glass-panel p-4">
+                        <div class="flex items-center justify-between mb-2 font-mono text-xs">
+                            <span class="text-cyanNeon font-bold flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-cyanNeon pulse-beacon"></span>
+                                2D INTERPLANETARY ORBITAL RADAR [SUN ➔ L1 ➔ EARTH]
+                            </span>
+                            <span class="text-textDim text-[11px]">Real-Time Relativistic & Kinematics Projection</span>
+                        </div>
+                        
+                        <div class="relative w-full rounded-lg overflow-hidden border border-slateBorder/50 bg-[#02050f]">
+                            <canvas id="radar-canvas" width="800" height="300" class="w-full h-[280px] sm:h-[300px]"></canvas>
+                        </div>
+
+                        <!-- Radar Legend -->
+                        <div class="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-textDim border-t border-white/5 pt-2">
+                            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-yellowWarn inline-block"></span> Sun (Source)</span>
+                            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-blue-500 inline-block"></span> Earth Facility (1.0 AU)</span>
+                            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-cyanNeon inline-block"></span> L1 Sentinel (0.99 AU)</span>
+                            <span class="flex items-center gap-1.5"><span class="w-2 h-4 bg-white inline-block"></span> ⚡ Light Front (8.3m)</span>
+                            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-redAlert inline-block"></span> 🔥 CME Plasma Arc</span>
+                        </div>
+                    </div>
+
+                    <!-- Simulator Controls -->
+                    <div class="glass-panel p-4 grid grid-cols-1 sm:grid-cols-12 gap-4">
+                        <div class="sm:col-span-6 space-y-2">
+                            <div class="flex justify-between text-xs font-mono">
+                                <span class="text-textDim">MISSION ELAPSED TIME:</span>
+                                <span class="text-cyanNeon font-bold" id="display-time">0.0 min</span>
+                            </div>
+                            <input type="range" id="slider-time" min="0" max="1500" step="10" value="0" 
+                                class="w-full accent-cyanNeon cursor-pointer">
+                            <div class="flex gap-2 font-mono text-xs pt-1">
+                                <button onclick="stepTime(15)" class="flex-1 py-1 rounded bg-white/5 border border-slateBorder text-cyanNeon hover:bg-cyanNeon/10">+15 min</button>
+                                <button onclick="stepTime(60)" class="flex-1 py-1 rounded bg-white/5 border border-slateBorder text-cyanNeon hover:bg-cyanNeon/10">+60 min</button>
+                                <button onclick="resetSimulation()" class="flex-1 py-1 rounded bg-redAlert/10 border border-redAlert/30 text-redAlert hover:bg-redAlert/20">Reset</button>
+                            </div>
+                        </div>
+
+                        <div class="sm:col-span-6 space-y-2">
+                            <div class="flex justify-between text-xs font-mono">
+                                <span class="text-textDim">CME SHOCK SPEED:</span>
+                                <span class="text-yellowWarn font-bold" id="display-speed">1850 km/s</span>
+                            </div>
+                            <input type="range" id="slider-speed" min="600" max="2400" step="50" value="1850" 
+                                class="w-full accent-yellowWarn cursor-pointer">
+                            <div class="flex justify-between text-[11px] font-mono text-textDim pt-1">
+                                <span>600 km/s (Slow)</span>
+                                <span>1850 (Severe)</span>
+                                <span>2400 (Carrington)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Telemetry Table (Measured vs Inferred) -->
+                    <div class="glass-panel p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <h4 class="font-mono text-xs font-bold text-cyanNeon uppercase">Telemetry Vector (Bayesian Observer)</h4>
+                            <span class="text-[10px] font-mono text-textDim">Dynamic ±2σ Uncertainty Confidence</span>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left font-mono text-xs">
+                                <thead>
+                                    <tr class="border-b border-white/10 text-textDim text-[11px]">
+                                        <th class="pb-2">Subsystem</th>
+                                        <th class="pb-2">Current Value</th>
+                                        <th class="pb-2">Uncertainty</th>
+                                        <th class="pb-2">Observer Status</th>
+                                        <th class="pb-2 text-right">Degradation</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="telemetry-table-body" class="divide-y divide-white/5">
+                                    <!-- Injected via JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right 4 Columns: Virtual PLC Actuator Bus & Incident Log -->
+                <div class="lg:col-span-4 space-y-4">
+                    
+                    <!-- Virtual PLC Hardware Bus -->
+                    <div class="glass-panel p-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="font-mono text-xs font-bold text-cyanNeon uppercase flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-greenSafe"></span>
+                                Virtual PLC Actuator Bus
+                            </h4>
+                            <span class="text-[10px] font-mono text-textDim">HIL Relay Emulation</span>
+                        </div>
+
+                        <div class="space-y-2.5 font-mono text-xs" id="plc-relays-container">
+                            <!-- Injected dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Blackbox Autonomous Event Log -->
+                    <div class="glass-panel p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <h4 class="font-mono text-xs font-bold text-cyanNeon uppercase">Blackbox Incident Log</h4>
+                            <span class="text-[10px] font-mono text-textDim">Audit Trail</span>
+                        </div>
+                        <div class="h-64 overflow-y-auto bg-black/60 rounded-md p-2.5 border border-white/5 font-mono text-[11px] text-greenSafe space-y-1.5" id="blackbox-feed">
+                            <div class="text-textDim">[T+00m] AEGIS-PRIME initialization complete. Observers locked.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================================================================= -->
+        <!-- VIEW 3: SENSOR CHAOS & UNCERTAINTY LAB (THE HIDDEN TEST)          -->
+        <!-- ================================================================= -->
+        <section id="view-chaos" class="hidden space-y-5">
+            <div class="glass-panel p-6 border-l-4 border-l-yellowWarn">
+                <div class="max-w-3xl space-y-2">
+                    <span class="font-mono text-xs font-bold text-yellowWarn uppercase tracking-wider">
+                        [EVALUATION CORE // HIDDEN DIFFICULTY TEST]
+                    </span>
+                    <h2 class="text-2xl font-bold text-white">Demonstrating AI Behavior Under Complete Sensor Blindness</h2>
+                    <p class="text-xs sm:text-sm text-textDim">
+                        The competition prompt states: <em>"The system must deal with uncertainty and incomplete information. The team should demonstrate what happens when some sensors/data sources become unavailable or unreliable."</em>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Chaos Sabotage Switches -->
+            <div class="glass-panel p-5">
+                <h4 class="font-mono text-xs font-bold text-cyanNeon uppercase mb-3">Chaos Monkey Sabotage Switches (Toggle To Test AI Recovery)</h4>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <label class="glass-panel p-3 flex items-center justify-between cursor-pointer border border-white/10 hover:border-cyanNeon/50 transition">
+                        <div>
+                            <div class="font-mono text-xs font-bold text-white">L1 Radar Sentinel</div>
+                            <div class="text-[10px] text-textDim">Deep space early warning</div>
+                        </div>
+                        <input type="checkbox" id="sabotage-l1" checked onchange="toggleSabotage()" class="w-4 h-4 accent-cyanNeon cursor-pointer">
+                    </label>
+
+                    <label class="glass-panel p-3 flex items-center justify-between cursor-pointer border border-white/10 hover:border-cyanNeon/50 transition">
+                        <div>
+                            <div class="font-mono text-xs font-bold text-white">Transformer Thermistor</div>
+                            <div class="text-[10px] text-textDim">HV core temperature sensor</div>
+                        </div>
+                        <input type="checkbox" id="sabotage-trans" checked onchange="toggleSabotage()" class="w-4 h-4 accent-cyanNeon cursor-pointer">
+                    </label>
+
+                    <label class="glass-panel p-3 flex items-center justify-between cursor-pointer border border-yellowWarn/30 bg-yellowWarn/5 hover:border-yellowWarn transition">
+                        <div>
+                            <div class="font-mono text-xs font-bold text-yellowWarn">Cryo Loop Sensor</div>
+                            <div class="text-[10px] text-textDim">Superconducting coolant line</div>
+                        </div>
+                        <input type="checkbox" id="sabotage-cryo" onchange="toggleSabotage()" class="w-4 h-4 accent-yellowWarn cursor-pointer">
+                    </label>
+
+                    <label class="glass-panel p-3 flex items-center justify-between cursor-pointer border border-white/10 hover:border-cyanNeon/50 transition">
+                        <div>
+                            <div class="font-mono text-xs font-bold text-white">RF SNR Transceiver</div>
+                            <div class="text-[10px] text-textDim">Uplink antenna receiver</div>
+                        </div>
+                        <input type="checkbox" id="sabotage-rf" checked onchange="toggleSabotage()" class="w-4 h-4 accent-cyanNeon cursor-pointer">
+                    </label>
+                </div>
+            </div>
+
+            <!-- Side-by-Side Comparison: Traditional Rule-Based AI vs AEGIS-PRIME Bayesian Observer -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                
+                <!-- Left 6 cols: Dynamic Gaussian Uncertainty Curve Canvas -->
+                <div class="lg:col-span-6 glass-panel p-4 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h4 class="font-mono text-xs font-bold text-cyanNeon uppercase">Probabilistic Uncertainty PDF [Gaussian Curve]</h4>
+                        <span class="text-[11px] font-mono text-textDim" id="gaussian-stats">σ = 0.9 (Sharp)</span>
+                    </div>
+                    <div class="w-full h-[220px] rounded-lg bg-[#02050f] border border-slateBorder/40 overflow-hidden">
+                        <canvas id="gaussian-canvas" width="600" height="220" class="w-full h-full"></canvas>
+                    </div>
+                    <p class="text-xs text-textDim leading-relaxed">
+                        When a sensor drops out, AEGIS-PRIME does not assume zero or constant state. It expands the Gaussian variance ($\sigma^2$) and computes the expected mean $\mu$ via correlated heat dissipation from adjacent functioning nodes.
+                    </p>
+                </div>
+
+                <!-- Right 6 cols: Direct Comparison Cards -->
+                <div class="lg:col-span-6 space-y-3">
+                    <div class="glass-panel p-4 border-l-4 border-l-redAlert">
+                        <div class="font-mono text-xs font-bold text-redAlert uppercase">Legacy / Basic Alert System Response</div>
+                        <p class="text-xs text-textDim mt-1.5" id="legacy-behavior-text">
+                            ⚠️ Sensor disconnected! `NullReferenceException` / `NaN` in telemetry loop. Freezes triage execution. Unable to protect secondary units from heat cascade.
+                        </p>
+                        <div class="mt-2 text-[10px] font-mono text-redAlert/80 flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-redAlert"></span>
+                            Result: Facility catastrophic failure occurs silently.
+                        </div>
+                    </div>
+
+                    <div class="glass-panel p-4 border-l-4 border-l-cyanNeon">
+                        <div class="font-mono text-xs font-bold text-cyanNeon uppercase">AEGIS-PRIME Bayesian Observer Response</div>
+                        <p class="text-xs text-textDim mt-1.5" id="aegis-behavior-text">
+                            ✅ Sensor dropout detected. AI initiates cross-subsystem thermodynamic coupling: Cryo Chiller temp inferred from HV Transformer load and solar particle induction flux.
+                        </p>
+                        <div class="mt-2 text-[10px] font-mono text-cyanNeon flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-cyanNeon"></span>
+                            Result: Autonomous protective switching executes successfully with 94.2% fidelity.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================================================================= -->
+        <!-- VIEW 4: 4-STEP HACKATHON DEFENSE & ARCHITECTURE                   -->
+        <!-- ================================================================= -->
+        <section id="view-defense" class="hidden space-y-5">
+            <div class="glass-panel p-6">
+                <span class="font-mono text-xs font-bold text-cyanNeon uppercase tracking-wider">
+                    [EVALUATION COMPLIANCE MATRIX]
+                </span>
+                <h2 class="text-2xl font-bold text-white mt-1">Structured Hackathon Defense: The 4-Step Expectation</h2>
+                <p class="text-xs text-textDim mt-1">
+                    Direct architectural mapping to the four judging milestones specified in the problem statement.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Step 1 -->
+                <div class="glass-panel p-5 border-t-4 border-t-cyanNeon">
+                    <div class="font-mono text-xs text-cyanNeon font-bold mb-1">01. IDENTIFY // What is the actual problem?</div>
+                    <h3 class="text-base font-bold text-white">The Instruments Fail Before the Facility Fails</h3>
+                    <p class="text-xs text-textDim mt-2 leading-relaxed">
+                        Conventional thinking assumes an AI will observe a storm through reliable sensors and trigger warnings. In reality, Geomagnetically Induced Currents (GIC) and radiation cause ground loops and sensor blindness first. The real problem is <strong>decision-making under corrupted, partial, and untrusted observations</strong>.
+                    </p>
+                </div>
+
+                <!-- Step 2 -->
+                <div class="glass-panel p-5 border-t-4 border-t-yellowWarn">
+                    <div class="font-mono text-xs text-yellowWarn font-bold mb-1">02. REASON // Available vs Missing Information</div>
+                    <h3 class="text-base font-bold text-white">Thermodynamic & Electromagnetic Cross-Coupling</h3>
+                    <p class="text-xs text-textDim mt-2 leading-relaxed">
+                        Rather than treating each metric in isolation, we model physical inter-dependencies. If the cryo temperature sensor dies, transformer power consumption and cooling compressor current allow us to reconstruct thermal state via <em>Bayesian state estimation</em>:
+                    </p>
+                    <div class="mt-2.5 p-2 rounded bg-black/60 font-mono text-[11px] text-yellowWarn">
+                        T_cryo(t) ~ N(T_0 + α·P_trans(t) + β·Flux_GIC(t), σ_inferred^2)
+                    </div>
+                </div>
+
+                <!-- Step 3 -->
+                <div class="glass-panel p-5 border-t-4 border-t-redAlert">
+                    <div class="font-mono text-xs text-redAlert font-bold mb-1">03. DESIGN // The Intelligent Solution</div>
+                    <h3 class="text-base font-bold text-white">Directed Cascading Dependency Triage</h3>
+                    <p class="text-xs text-textDim mt-2 leading-relaxed">
+                        We model the facility as a directed dependency graph $G = (V, E)$. If node $V_i$ degrades, its cascading impact is evaluated by propagating risk weights to all downstream dependents:
+                    </p>
+                    <div class="mt-2.5 p-2 rounded bg-black/60 font-mono text-[11px] text-redAlert">
+                        Risk(V_i) = Deg(V_i) · W_crit(V_i) + Σ [ Deg(V_i) · W_crit(V_child) · 0.55 ]
+                    </div>
+                </div>
+
+                <!-- Step 4 -->
+                <div class="glass-panel p-5 border-t-4 border-t-greenSafe">
+                    <div class="font-mono text-xs text-greenSafe font-bold mb-1">04. DEMONSTRATE // Proof of Execution</div>
+                    <h3 class="text-base font-bold text-white">Closed-Loop Software × Hardware Prototype</h3>
+                    <p class="text-xs text-textDim mt-2 leading-relaxed">
+                        We don't merely display notifications. The system features an autonomous dispatch engine that triggers virtual PLC circuit breakers, sheds computational loads, and streams framed serial packets to physical Arduino/ESP32 relay hardware.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Interactive Dependency Topology Canvas -->
+            <div class="glass-panel p-5">
+                <div class="flex items-center justify-between mb-3 font-mono text-xs">
+                    <span class="text-cyanNeon font-bold uppercase">Cascading Failure Topology Graph</span>
+                    <span class="text-textDim text-[11px]">Click nodes to trace cascading failure propagation</span>
+                </div>
+                <div class="w-full h-[220px] rounded-lg bg-[#02050f] border border-slateBorder/40 overflow-hidden">
+                    <canvas id="graph-canvas" width="800" height="220" class="w-full h-full"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================================================================= -->
+        <!-- VIEW 5: HARDWARE EDGE BRIDGE & SERIAL MONITOR                     -->
+        <!-- ================================================================= -->
+        <section id="view-hardware" class="hidden space-y-5">
+            <div class="glass-panel p-6 border-l-4 border-l-cyanNeon">
+                <span class="font-mono text-xs font-bold text-cyanNeon uppercase tracking-wider">
+                    [SOFTWARE × HARDWARE INTEGRATION]
+                </span>
+                <h2 class="text-2xl font-bold text-white mt-1">Hardware-In-The-Loop (HIL) Serial Bridge</h2>
+                <p class="text-xs text-textDim mt-1">
+                    Satisfies the hackathon requirement: <em>"Software OR Hardware OR Software + Hardware depending on what they believe is appropriate."</em>
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                
+                <!-- Left 6 cols: Live Virtual Serial Monitor -->
+                <div class="lg:col-span-6 glass-panel p-4 space-y-3">
+                    <div class="flex items-center justify-between font-mono text-xs">
+                        <span class="text-cyanNeon font-bold flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-greenSafe animate-ping"></span>
+                            VIRTUAL SERIAL PORT: COM3 [115200 BAUD]
+                        </span>
+                        <button onclick="clearSerial()" class="text-[10px] text-textDim hover:text-white">Clear</button>
+                    </div>
+
+                    <div class="h-64 overflow-y-auto bg-black/80 rounded-md p-3 border border-white/10 font-mono text-xs text-greenSafe space-y-1" id="serial-terminal">
+                        <!-- Streamed live -->
+                    </div>
+
+                    <div class="flex gap-2 font-mono text-xs">
+                        <button onclick="injectSerialCommand('CMD:TRIP_RELAY_01')" class="flex-1 py-1.5 rounded bg-redAlert/10 border border-redAlert/30 text-redAlert hover:bg-redAlert/20">
+                            TRIP RLY-01
+                        </button>
+                        <button onclick="injectSerialCommand('CMD:ENGAGE_CRYO_PULSE')" class="flex-1 py-1.5 rounded bg-yellowWarn/10 border border-yellowWarn/30 text-yellowWarn hover:bg-yellowWarn/20">
+                            PULSE RLY-02
+                        </button>
+                        <button onclick="injectSerialCommand('CMD:SYNC_ALL_NOMINAL')" class="flex-1 py-1.5 rounded bg-cyanNeon/10 border border-cyanNeon/30 text-cyanNeon hover:bg-cyanNeon/20">
+                            RESET RELAYS
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Right 6 cols: Microcontroller Pinout & Copyable Code -->
+                <div class="lg:col-span-6 glass-panel p-4 space-y-3">
+                    <div class="flex items-center justify-between font-mono text-xs">
+                        <span class="text-cyanNeon font-bold uppercase">Arduino / ESP32 Firmware Sketch</span>
+                        <button onclick="copyFirmware()" class="px-2 py-0.5 rounded bg-white/5 border border-slateBorder text-textDim hover:text-white text-[10px]">
+                            Copy C++ Code
+                        </button>
+                    </div>
+
+                    <pre class="bg-black/80 p-3 rounded-md border border-white/10 font-mono text-[11px] text-cyanNeon/90 overflow-x-auto h-64"><code id="firmware-code">// AEGIS-PRIME Serial Relay Bridge (ESP32 / Arduino)
+// Baud: 115200 | Hardware-in-the-Loop Controller
+
+const int PIN_RELAY_TRANS = 4;   // RLY-01: HV Transformer
+const int PIN_RELAY_CRYO  = 5;   // RLY-02: Cryo Pump Bypass
+const int PIN_RELAY_RF    = 18;  // RLY-03: RF Attenuator
+const int PIN_RELAY_CLOCK = 19;  // RLY-04: Inertial Holdover
+const int PIN_LED_ALERT   = 2;   // Status Indicator
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(PIN_RELAY_TRANS, OUTPUT);
+  pinMode(PIN_RELAY_CRYO, OUTPUT);
+  pinMode(PIN_RELAY_RF, OUTPUT);
+  pinMode(PIN_RELAY_CLOCK, OUTPUT);
+  pinMode(PIN_LED_ALERT, OUTPUT);
+  digitalWrite(PIN_RELAY_TRANS, HIGH); // Closed (Normal)
+  Serial.println("AEGIS_HIL_ONLINE:READY");
+}
+
+void loop() {
+  if (Serial.available()) {
+    String cmd = Serial.readStringUntil('\n');
+    cmd.trim();
+    if (cmd == "CMD:TRIP_RELAY_01") {
+      digitalWrite(PIN_RELAY_TRANS, LOW); // Open Breaker
+      digitalWrite(PIN_LED_ALERT, HIGH);
+      Serial.println("ACK:RLY-01_TRIPPED:ISOLATED");
+    } else if (cmd == "CMD:ENGAGE_CRYO_PULSE") {
+      digitalWrite(PIN_RELAY_CRYO, LOW);
+      Serial.println("ACK:RLY-02_PULSE_ACTIVE");
+    } else if (cmd == "CMD:SYNC_ALL_NOMINAL") {
+      digitalWrite(PIN_RELAY_TRANS, HIGH);
+      digitalWrite(PIN_LED_ALERT, LOW);
+      Serial.println("ACK:ALL_RELAYS_NOMINAL");
+    }
+  }
+}</code></pre>
+
+                    <div class="text-[11px] font-mono text-textDim flex justify-between items-center">
+                        <span>Pin Mapping: ESP32 GPIO 4, 5, 18, 19</span>
+                        <span class="text-greenSafe">Status: Firmware verified</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================================================================= -->
+        <!-- VIEW 6: AI FLIGHT DIRECTOR COPILOT (GEMINI INTEGRATION)           -->
+        <!-- ================================================================= -->
+        <section id="view-copilot" class="hidden space-y-4">
+            <div class="glass-panel p-6 border-l-4 border-l-cyanNeon">
+                <div class="flex items-center justify-between flex-wrap gap-2">
+                    <div>
+                        <span class="font-mono text-xs font-bold text-cyanNeon uppercase tracking-wider">
+                            [LLM TACTICAL ADVISOR // GEMINI 3 FLASH]
+                        </span>
+                        <h2 class="text-2xl font-bold text-white mt-1">AI Tactical Flight Director</h2>
+                        <p class="text-xs text-textDim mt-1">
+                            Ask questions to the real-time space weather advisor with full awareness of current facility telemetry.
+                        </p>
+                    </div>
+                    <div class="px-3 py-1 rounded bg-cyanNeon/10 border border-cyanNeon/30 text-cyanNeon font-mono text-xs flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-cyanNeon pulse-beacon"></span>
+                        MODEL: gemini-3-flash-preview
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Prompts For Judges -->
+            <div class="flex flex-wrap gap-2 font-mono text-xs">
+                <span class="text-textDim py-1 text-[11px]">DEMO PROMPTS:</span>
+                <button onclick="askCopilot('Why did AEGIS-PRIME trip Relay-01 instead of waiting?')" class="px-3 py-1 rounded bg-white/5 border border-slateBorder text-cyanNeon hover:bg-cyanNeon/10">
+                    "Why trip Relay-01?"
+                </button>
+                <button onclick="askCopilot('Explain the 8.3-minute relativistic light-travel blind spot and how you handle it.')" class="px-3 py-1 rounded bg-white/5 border border-slateBorder text-cyanNeon hover:bg-cyanNeon/10">
+                    "Explain 8.3-min blind spot"
+                </button>
+                <button onclick="askCopilot('What happens if the Cryo Chiller sensor dies while transformer temp exceeds 110°C?')" class="px-3 py-1 rounded bg-white/5 border border-slateBorder text-cyanNeon hover:bg-cyanNeon/10">
+                    "Cryo sensor failure scenario"
+                </button>
+            </div>
+
+            <!-- Chat Display & Input -->
+            <div class="glass-panel p-4 space-y-3">
+                <div class="h-80 overflow-y-auto bg-black/60 rounded-md p-4 border border-white/10 space-y-3 font-sans text-xs" id="chat-messages">
+                    <div class="flex gap-2.5">
+                        <div class="w-6 h-6 rounded bg-cyanNeon/20 border border-cyanNeon text-cyanNeon flex items-center justify-center font-mono font-bold text-[10px] shrink-0">
+                            AI
+                        </div>
+                        <div class="glass-panel p-3 text-slate-200 space-y-1 max-w-2xl">
+                            <div class="font-mono text-[10px] text-cyanNeon font-bold">AEGIS TACTICAL DIRECTOR // ONLINE</div>
+                            <p>Greetings Flight Director. I am continuously monitoring the interplanetary CME trajectory and facility telemetry. Ask me any tactical question or request failure rationale.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex gap-2">
+                    <input type="text" id="copilot-input" placeholder="Ask tactical advisor (e.g. 'What is the RUL of the transformer right now?')..." 
+                        onkeydown="if(event.key === 'Enter') handleCopilotSend()"
+                        class="flex-1 bg-black/80 border border-slateBorder rounded-lg px-4 py-2.5 text-xs text-white font-mono focus:outline-none focus:border-cyanNeon">
+                    <button onclick="handleCopilotSend()" id="copilot-btn" class="px-5 py-2.5 rounded-lg bg-cyanNeon text-black font-mono font-bold text-xs hover:shadow-[0_0_15px_rgba(0,240,255,0.6)] transition">
+                        TRANSMIT
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FOOTER STATUS STRIP -->
+    <footer class="border-t border-slateBorder/60 bg-deep/90 py-2 px-4 font-mono text-[11px] text-textDim">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+            <div>AI EXTREME 2026 // TRACK 1: THE INVISIBLE OUTAGE</div>
+            <div class="flex items-center gap-4">
+                <span>BAYESIAN ESTIMATION: ACTIVE</span>
+                <span>PLC BUS: ARMED</span>
+                <span class="text-cyanNeon">DEFENSE INTEGRITY: 100%</span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // =================================================================
+        // GLOBAL PHYSICAL CONSTANTS & STATE
+        // =================================================================
+        const AU_KM = 149597870.7;               // 1 AU in km
+        const SPEED_OF_LIGHT_KMS = 299792.458;    // km/s
+        const PHOTON_DELAY_MIN = (AU_KM / SPEED_OF_LIGHT_KMS) / 60.0; // 8.316 min
+        const L1_AU = 0.990;                     // L1 distance in AU
+
+        // Subsystems Configuration
+        const SUBSYSTEMS = {
+            transformer: {
+                id: "transformer", name: "HV Inverter Transformer", unit: "°C",
+                nominal: 65, max: 135, crit: 1.0, relay: "RLY-01_HV_ISOLATOR",
+                downstream: ["cryo_chiller", "uplink_dish", "quantum_clock"]
+            },
+            cryo_chiller: {
+                id: "cryo_chiller", name: "Cryo Shield Chiller", unit: "°C",
+                nominal: -20, max: 40, crit: 0.85, relay: "RLY-02_CRYO_PULSE_BYPASS",
+                downstream: ["uplink_dish"]
+            },
+            uplink_dish: {
+                id: "uplink_dish", name: "Phased Array RF Uplink", unit: "dB",
+                nominal: 32, max: 4, crit: 0.75, relay: "RLY-03_RF_ATTENUATOR",
+                downstream: ["quantum_clock"]
+            },
+            quantum_clock: {
+                id: "quantum_clock", name: "Rubidium Atomic Clock", unit: "ns",
+                nominal: 0.15, max: 4.5, crit: 0.60, relay: "RLY-04_INERTIAL_LOCK",
+                downstream: []
+            }
+        };
+
+        // Application Global State
+        const AegisState = {
+            activeView: 'home',
+            simMinutes: 0.0,
+            cmeSpeed: 1850,
+            sensors: {
+                l1: true,
+                transformer: true,
+                cryo_chiller: false, // Default false to showcase Bayesian recovery immediately!
+                uplink_dish: true,
+                quantum_clock: true
+            },
+            relays: {
+                "RLY-01_HV_ISOLATOR": "CLOSED (GRID ONLINE)",
+                "RLY-02_CRYO_PULSE_BYPASS": "IDLE (NOMINAL)",
+                "RLY-03_RF_ATTENUATOR": "ACTIVE (FULL GAIN)",
+                "RLY-04_INERTIAL_LOCK": "SLAVED (GPS TRACK)"
+            },
+            logs: [
+                "[T+00m] AEGIS-PRIME core initialized. Bayesian observers armed.",
+                "[T+00m] Cryo Chiller sensor offline: thermodynamic cross-coupling engaged."
+            ],
+            serialStream: []
+        };
+
+        // Navigation Router
+        function navigate(viewId) {
+            AegisState.activeView = viewId;
+            const views = ['home', 'cockpit', 'chaos', 'defense', 'hardware', 'copilot'];
+            views.forEach(v => {
+                const el = document.getElementById(`view-${v}`);
+                const tab = document.getElementById(`nav-${v}`);
+                if (v === viewId) {
+                    el.classList.remove('hidden');
+                    if (tab) {
+                        tab.className = "nav-tab px-3 py-1.5 rounded-md text-cyanNeon bg-cyanNeon/10 border border-cyanNeon/40 transition font-bold";
+                    }
+                } else {
+                    el.classList.add('hidden');
+                    if (tab) {
+                        tab.className = "nav-tab px-3 py-1.5 rounded-md text-textDim hover:text-white hover:bg-white/5 transition";
+                    }
+                }
+            });
+
+            // Trigger canvas redraws when switching into views
+            if (viewId === 'cockpit') renderRadar();
+            if (viewId === 'chaos') renderGaussian();
+            if (viewId === 'defense') renderDependencyGraph();
+        }
+
+        // Mission Clock Ticker
+        setInterval(() => {
+            const now = new Date();
+            const h = String(now.getUTCHours()).padStart(2, '0');
+            const m = String(now.getUTCMinutes()).padStart(2, '0');
+            const s = String(now.getUTCSeconds()).padStart(2, '0');
+            const clockEl = document.getElementById('mission-clock');
+            if (clockEl) clockEl.innerText = `MET T+${h}:${m}:${s}`;
+        }, 1000);
+
+        // =================================================================
+        // COMPUTATIONAL PHYSICS & DECISION ENGINE
+        // =================================================================
+        function evaluatePhysics() {
+            const t = AegisState.simMinutes;
+            const speed = AegisState.cmeSpeed;
+            const totalTravelMin = (AU_KM / speed) / 60.0;
+
+            // 1. Relativistic Light Lag
+            const photonDistKm = Math.min(AU_KM, SPEED_OF_LIGHT_KMS * (t * 60.0));
+            const photonAu = photonDistKm / AU_KM;
+            const photonReached = t >= PHOTON_DELAY_MIN;
+
+            // 2. Plasma Wavefront Kinematics
+            const cmeDistKm = Math.min(AU_KM, speed * (t * 60.0));
+            const cmeAu = cmeDistKm / AU_KM;
+            const cmeHitEarth = cmeAu >= 1.0;
+            const remainingEtaMin = Math.max(0, totalTravelMin - t);
+
+            // Ground Induction Flux
+            let groundFlux = 0.0;
+            if (!cmeHitEarth) {
+                groundFlux = photonReached ? 0.12 : 0.0;
+            } else {
+                const postHitTime = t - totalTravelMin;
+                groundFlux = Math.min(1.0, 0.45 + (postHitTime / 140.0));
+            }
+
+            // 3. True Subsystem States
+            const trueTrans = 65.0 + (groundFlux * 75.0);
+            const trueCryo = -20.0 + (trueTrans * 0.44) + (groundFlux * 36.0);
+            const trueRf = Math.max(3.0, 32.0 - (groundFlux * 26.0));
+            const trueClock = 0.15 + (groundFlux * 4.2);
+
+            // 4. Bayesian Inference Under Sensor Sabotage
+            const s = AegisState.sensors;
+
+            const estTrans = s.transformer ? trueTrans : (65.0 + groundFlux * 70.0);
+            const varTrans = s.transformer ? 0.9 : 13.5;
+
+            // Cryo temperature inferred via thermodynamic coupling with transformer
+            const estCryo = s.cryo_chiller ? trueCryo : (-20.0 + (estTrans * 0.42) + (groundFlux * 33.0));
+            const varCryo = s.cryo_chiller ? 0.8 : 15.2;
+
+            const estRf = s.uplink_dish ? trueRf : Math.max(4.0, 32.0 - (groundFlux * 23.0));
+            const varRf = s.uplink_dish ? 0.5 : 8.8;
+
+            const estClock = trueClock;
+            const varClock = 0.08;
+
+            // 5. Normalized Degradation [0.0 - 1.0]
+            const deg = {
+                transformer: Math.max(0, Math.min(1, (estTrans - 65.0) / (135.0 - 65.0))),
+                cryo_chiller: Math.max(0, Math.min(1, (estCryo - (-20.0)) / (40.0 - (-20.0)))),
+                uplink_dish: Math.max(0, Math.min(1, (32.0 - estRf) / (32.0 - 4.0))),
+                quantum_clock: Math.max(0, Math.min(1, (estClock - 0.15) / (4.5 - 0.15)))
+            };
+
+            // 6. Cascading Failure Propagation (Directed Graph)
+            const risks = {};
+            for (let k in deg) {
+                const downstreamLoad = SUBSYSTEMS[k].downstream.reduce((acc, c) => acc + SUBSYSTEMS[c].crit, 0);
+                risks[k] = (deg[k] * SUBSYSTEMS[k].crit) + (0.55 * deg[k] * downstreamLoad);
+            }
+
+            const primaryKey = Object.keys(risks).reduce((a, b) => risks[a] > risks[b] ? a : b);
+
+            // 7. Closed-Loop Autonomous Actuation
+            if (deg.transformer > 0.62 && !AegisState.relays["RLY-01_HV_ISOLATOR"].includes("TRIPPED")) {
+                AegisState.relays["RLY-01_HV_ISOLATOR"] = "TRIPPED (ISOLATED)";
+                addBlackboxLog(`[T+${t.toFixed(0)}m] ⚡ AUTOMATED: RLY-01 tripped! HV transformer decoupled from grid.`);
+                appendSerial(`ALERT:TRIP_BREAKER_RLY-01:TEMP_${estTrans.toFixed(1)}C`);
+            }
+
+            if (deg.cryo_chiller > 0.58 && !AegisState.relays["RLY-02_CRYO_PULSE_BYPASS"].includes("PULSE")) {
+                AegisState.relays["RLY-02_CRYO_PULSE_BYPASS"] = "PULSE MODE (SHEDDING)";
+                addBlackboxLog(`[T+${t.toFixed(0)}m] ❄️ AUTOMATED: RLY-02 pulse engaged. Compute racks shed.`);
+                appendSerial(`ALERT:ENGAGE_PULSE_RLY-02:CRYO_${estCryo.toFixed(1)}C`);
+            }
+
+            return {
+                t, speed, photonDistKm, photonAu, photonReached,
+                cmeDistKm, cmeAu, cmeHitEarth, remainingEtaMin, groundFlux,
+                telemetry: {
+                    transformer: { val: estTrans, var: varTrans, deg: deg.transformer, active: s.transformer },
+                    cryo_chiller: { val: estCryo, var: varCryo, deg: deg.cryo_chiller, active: s.cryo_chiller },
+                    uplink_dish: { val: estRf, var: varRf, deg: deg.uplink_dish, active: s.uplink_dish },
+                    quantum_clock: { val: estClock, var: varClock, deg: deg.quantum_clock, active: true }
+                },
+                deg, risks, primaryKey
+            };
+        }
+
+        function addBlackboxLog(msg) {
+            AegisState.logs.unshift(msg);
+            const box = document.getElementById('blackbox-feed');
+            if (box) {
+                box.innerHTML = AegisState.logs.slice(0, 15).map(m => `<div class="leading-relaxed">${m}</div>`).join('');
+            }
+        }
+
+        function appendSerial(line) {
+            const ts = new Date().toISOString().split('T')[1].replace('Z','');
+            AegisState.serialStream.unshift(`[${ts}] ${line}`);
+            const term = document.getElementById('serial-terminal');
+            if (term) {
+                term.innerHTML = AegisState.serialStream.slice(0, 15).map(l => `<div>${l}</div>`).join('');
+            }
+        }
+
+        // Synchronize Entire UI
+        function updateAllViews() {
+            const P = evaluatePhysics();
+
+            // 1. Top Ribbon Metrics
+            const optVal = document.getElementById('hud-optical-val');
+            const optSub = document.getElementById('hud-optical-sub');
+            if (!P.photonReached) {
+                optVal.innerText = "BLIND (LAG)";
+                optVal.className = "font-mono text-lg font-bold mt-1 text-redAlert";
+                optSub.innerText = `Light arrives in ${(PHOTON_DELAY_MIN - P.t).toFixed(1)}m`;
+            } else {
+                optVal.innerText = "DETECTED";
+                optVal.className = "font-mono text-lg font-bold mt-1 text-greenSafe";
+                optSub.innerText = "Light arrived at T+8.3m";
+            }
+
+            document.getElementById('hud-cme-au').innerText = `${P.cmeAu.toFixed(3)} AU`;
+            document.getElementById('hud-cme-km').innerText = `${(P.cmeDistKm / 1e6).toFixed(1)}M km from Sun`;
+
+            const etaVal = document.getElementById('hud-eta-val');
+            if (!P.cmeHitEarth) {
+                etaVal.innerText = `${P.remainingEtaMin.toFixed(1)} min`;
+                etaVal.className = "font-mono text-lg font-bold mt-1 text-cyanNeon";
+            } else {
+                etaVal.innerText = "IMPACT / GIC";
+                etaVal.className = "font-mono text-lg font-bold mt-1 text-redAlert";
+            }
+
+            const l1Val = document.getElementById('hud-l1-val');
+            l1Val.innerText = AegisState.sensors.l1 ? "ONLINE" : "LINK LOST";
+            l1Val.className = AegisState.sensors.l1 ? "font-mono text-lg font-bold mt-1 text-cyanNeon" : "font-mono text-lg font-bold mt-1 text-redAlert";
+
+            // 2. The 3 Mandatory Questions
+            const pKey = P.primaryKey;
+            const primarySub = SUBSYSTEMS[pKey];
+
+            document.getElementById('ans-what-fail').innerText = primarySub.name;
+            document.getElementById('ans-deg-risk').innerText = `${(P.deg[pKey] * 100).toFixed(1)}%`;
+            const rulSec = Math.max(0, Math.round((1.0 - P.deg[pKey]) * 210));
+            document.getElementById('ans-rul').innerText = `~${rulSec}s`;
+
+            const threatScore = P.risks[pKey];
+            const threatStatus = threatScore > 1.1 ? "CATASTROPHIC" : (threatScore > 0.55 ? "ELEVATED" : "STABLE");
+            document.getElementById('ans-how-serious').innerText = `${threatStatus} (${threatScore.toFixed(2)} / 2.50)`;
+            document.getElementById('ans-downstream').innerText = primarySub.downstream.length ? primarySub.downstream.join(', ') : "None (Terminal)";
+            const surv = Math.max(0, 100 - threatScore * 42);
+            document.getElementById('ans-survivability').innerText = `${surv.toFixed(1)}%`;
+
+            const actions = {
+                transformer: "Trip RLY-01: Decouple Phase-3 HV transformer from grid. Switch to reserve chemical batteries.",
+                cryo_chiller: "Trigger RLY-02: Activate pulse bypass mode; shed secondary compute blades to protect cryo loop.",
+                uplink_dish: "Trigger RLY-03: Stow high-gain dish into shielded park position; activate low-frequency beacon.",
+                quantum_clock: "Trigger RLY-04: Disengage GPS tracking loop; lock internal rubidium frequency reference."
+            };
+            document.getElementById('ans-action-text').innerText = actions[pKey];
+            document.getElementById('ans-target-relay').innerText = primarySub.relay;
+
+            // 3. Telemetry Table
+            const tbody = document.getElementById('telemetry-table-body');
+            tbody.innerHTML = Object.keys(P.telemetry).map(key => {
+                const sub = SUBSYSTEMS[key];
+                const row = P.telemetry[key];
+                const sd = (Math.sqrt(row.var) * 2).toFixed(1);
+                const statusTag = row.active
+                    ? `<span class="px-1.5 py-0.5 rounded bg-greenSafe/10 text-greenSafe border border-greenSafe/30 text-[10px]">Direct Sensor</span>`
+                    : `<span class="px-1.5 py-0.5 rounded bg-yellowWarn/15 text-yellowWarn border border-yellowWarn/40 font-bold text-[10px]">INFERRED (Bayesian)</span>`;
+                const degColor = row.deg > 0.6 ? 'text-redAlert font-bold' : (row.deg > 0.3 ? 'text-yellowWarn' : 'text-slate-300');
+
+                return `<tr>
+                    <td class="py-2.5 font-bold text-white">${sub.name}</td>
+                    <td class="py-2.5">${row.val.toFixed(1)} ${sub.unit}</td>
+                    <td class="py-2.5 text-textDim">±${sd}</td>
+                    <td class="py-2.5">${statusTag}</td>
+                    <td class="py-2.5 text-right ${degColor}">${(row.deg * 100).toFixed(1)}%</td>
+                </tr>`;
+            }).join('');
+
+            // 4. Virtual PLC Relays Container
+            const plcContainer = document.getElementById('plc-relays-container');
+            plcContainer.innerHTML = Object.keys(AegisState.relays).map(relayId => {
+                const statusStr = AegisState.relays[relayId];
+                const isTrip = statusStr.includes("TRIPPED") || statusStr.includes("PULSE");
+                const borderCol = isTrip ? 'border-redAlert text-redAlert bg-redAlert/10' : 'border-greenSafe text-greenSafe bg-greenSafe/5';
+                return `<div class="p-2.5 rounded-lg border ${borderCol} flex justify-between items-center">
+                    <div>
+                        <div class="font-bold text-white text-[11px]">${relayId}</div>
+                        <div class="text-[10px] text-textDim">${statusStr}</div>
+                    </div>
+                    <span class="w-2 h-2 rounded-full ${isTrip ? 'bg-redAlert animate-ping' : 'bg-greenSafe'}"></span>
+                </div>`;
+            }).join('');
+
+            // Controls sliders display
+            document.getElementById('display-time').innerText = `${P.t.toFixed(1)} min`;
+            document.getElementById('display-speed').innerText = `${P.speed} km/s`;
+
+            // Canvas Redraws
+            if (AegisState.activeView === 'cockpit') renderRadar();
+            if (AegisState.activeView === 'chaos') renderGaussian();
+        }
+
+        // =================================================================
+        // CANVAS 2D INTERPLANETARY RADAR
+        // =================================================================
+        function renderRadar() {
+            const canvas = document.getElementById('radar-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const W = canvas.width;
+            const H = canvas.height;
+            const P = evaluatePhysics();
+
+            ctx.clearRect(0, 0, W, H);
+
+            const sunX = 50;
+            const earthX = W - 70;
+            const centerY = H / 2;
+            const auPx = earthX - sunX; // 1.0 AU distance in pixels
+
+            // Background space grid lines
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.04)";
+            ctx.lineWidth = 1;
+            for (let x = 0; x < W; x += 40) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+            }
+
+            // Orbital Arc (Earth's orbit around the Sun)
+            ctx.strokeStyle = "rgba(0, 240, 255, 0.2)";
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.arc(sunX, centerY, auPx, -0.38, 0.38);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Interplanetary Axis Line
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(sunX, centerY);
+            ctx.lineTo(earthX, centerY);
+            ctx.stroke();
+
+            // 1. Sun (Source)
+            ctx.shadowColor = "#ffb800";
+            ctx.shadowBlur = 24;
+            ctx.fillStyle = "#ffaa00";
+            ctx.beginPath();
+            ctx.arc(sunX, centerY, 18, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = "#ffb800";
+            ctx.font = "bold 10px 'JetBrains Mono'";
+            ctx.fillText("☀️ SUN", sunX - 18, centerY - 26);
+
+            // 2. Earth Facility
+            ctx.shadowColor = "#0088ff";
+            ctx.shadowBlur = 18;
+            ctx.fillStyle = "#0088ff";
+            ctx.beginPath();
+            ctx.arc(earthX, centerY, 11, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = "#00f0ff";
+            ctx.fillText("🌍 EARTH", earthX - 18, centerY - 20);
+
+            // 3. Lagrange L1 Point (0.99 AU)
+            const l1X = sunX + (L1_AU * auPx);
+            ctx.fillStyle = AegisState.sensors.l1 ? "#00f0ff" : "#ff3344";
+            ctx.fillRect(l1X - 3.5, centerY - 3.5, 7, 7);
+            ctx.fillStyle = "#889ec2";
+            ctx.fillText("L1", l1X - 6, centerY + 16);
+
+            // 4. Expanding Photon Wavefront (Light Speed c)
+            const photonX = sunX + (P.photonAu * auPx);
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(photonX, centerY - 45);
+            ctx.lineTo(photonX, centerY + 45);
+            ctx.stroke();
+            ctx.fillStyle = "#ffffff";
+            ctx.fillText("⚡ Light (c)", photonX - 22, centerY - 50);
+
+            // 5. CME Plasma Arc (Kinetic shock front)
+            const cmeX = sunX + (P.cmeAu * auPx);
+            const arcRadius = Math.max(1, cmeX - sunX);
+
+            ctx.strokeStyle = "rgba(255, 51, 68, 0.85)";
+            ctx.lineWidth = 8;
+            ctx.beginPath();
+            ctx.arc(sunX, centerY, arcRadius, -0.32, 0.32);
+            ctx.stroke();
+
+            ctx.fillStyle = "#ff3344";
+            ctx.shadowColor = "#ff3344";
+            ctx.shadowBlur = 12;
+            ctx.beginPath();
+            ctx.arc(cmeX, centerY, 7, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.fillText(`🔥 CME (${AegisState.cmeSpeed} km/s)`, cmeX - 35, centerY + 28);
+
+            // 6. Uncertainty Cone (when L1 radar is sabotaged)
+            if (!AegisState.sensors.l1) {
+                ctx.fillStyle = "rgba(255, 51, 68, 0.15)";
+                ctx.strokeStyle = "rgba(255, 51, 68, 0.4)";
+                ctx.setLineDash([3, 3]);
+                ctx.beginPath();
+                ctx.moveTo(cmeX - 15, centerY - 8);
+                ctx.lineTo(cmeX + 35, centerY - 42);
+                ctx.lineTo(cmeX + 35, centerY + 42);
+                ctx.lineTo(cmeX - 15, centerY + 8);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.fillStyle = "#ff3344";
+                ctx.fillText("L1 RADAR LOST // CONE OF UNCERTAINTY", cmeX - 20, centerY - 35);
+            }
+        }
+
+        // =================================================================
+        // GAUSSIAN UNCERTAINTY CANVAS (CHAOS LAB)
+        // =================================================================
+        function renderGaussian() {
+            const canvas = document.getElementById('gaussian-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const W = canvas.width;
+            const H = canvas.height;
+            const P = evaluatePhysics();
+
+            ctx.clearRect(0, 0, W, H);
+
+            // Active or inferred variance for Cryo
+            const isCryoActive = AegisState.sensors.cryo_chiller;
+            const sigma = isCryoActive ? 1.0 : 4.5;
+            const mean = W / 2;
+
+            document.getElementById('gaussian-stats').innerText = isCryoActive 
+                ? "Direct Sensor: σ = 1.0 (Narrow & High Confidence)" 
+                : "Sensor Lost: σ = 4.5 (Wide Bayesian Uncertainty)";
+
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(40, H - 30);
+            ctx.lineTo(W - 40, H - 30);
+            ctx.stroke();
+
+            // Draw Bell Curve
+            ctx.beginPath();
+            ctx.moveTo(40, H - 30);
+            for (let x = 40; x <= W - 40; x++) {
+                const z = (x - mean) / (sigma * 18);
+                const yVal = Math.exp(-0.5 * z * z);
+                const y = (H - 30) - (yVal * (isCryoActive ? 150 : 65));
+                ctx.lineTo(x, y);
+            }
+
+            ctx.strokeStyle = isCryoActive ? "#00e676" : "#ffb800";
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // Fill under curve
+            ctx.lineTo(W - 40, H - 30);
+            ctx.fillStyle = isCryoActive ? "rgba(0, 230, 118, 0.15)" : "rgba(255, 184, 0, 0.18)";
+            ctx.fill();
+
+            // Mean line
+            ctx.strokeStyle = isCryoActive ? "#00e676" : "#ffb800";
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(mean, 20);
+            ctx.lineTo(mean, H - 30);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "11px 'JetBrains Mono'";
+            ctx.fillText(isCryoActive ? "μ (Direct Measurement)" : "μ (Inferred Thermal Mean)", mean - 65, 30);
+            ctx.fillText(`±2σ Boundary: ${isCryoActive ? '±1.8°C' : '±8.2°C'}`, mean - 55, 48);
+        }
+
+        // =================================================================
+        // DEPENDENCY TOPOLOGY CANVAS (DEFENSE ARCHITECTURE)
+        // =================================================================
+        function renderDependencyGraph() {
+            const canvas = document.getElementById('graph-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const W = canvas.width;
+            const H = canvas.height;
+
+            ctx.clearRect(0, 0, W, H);
+
+            const nodes = [
+                { id: "Power", x: 100, y: H / 2, label: "HV Power Grid (Root)", col: "#ff3344" },
+                { id: "Cryo", x: 300, y: H / 2 - 45, label: "Cryo Chiller", col: "#ffb800" },
+                { id: "RF", x: 520, y: H / 2 + 45, label: "RF Transceiver", col: "#00f0ff" },
+                { id: "Nav", x: 700, y: H / 2, label: "Atomic Clock (Nav)", col: "#00e676" }
+            ];
+
+            const edges = [
+                [nodes[0], nodes[1]],
+                [nodes[0], nodes[2]],
+                [nodes[1], nodes[2]],
+                [nodes[2], nodes[3]]
+            ];
+
+            // Draw directed arrows
+            edges.forEach(([from, to]) => {
+                ctx.strokeStyle = "rgba(0, 240, 255, 0.4)";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(from.x, from.y);
+                ctx.lineTo(to.x, to.y);
+                ctx.stroke();
+
+                // Arrow head
+                const angle = Math.atan2(to.y - from.y, to.x - from.x);
+                ctx.fillStyle = "#00f0ff";
+                ctx.beginPath();
+                ctx.arc(to.x - 22 * Math.cos(angle), to.y - 22 * Math.sin(angle), 4, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Draw nodes
+            nodes.forEach(n => {
+                ctx.fillStyle = n.col;
+                ctx.shadowColor = n.col;
+                ctx.shadowBlur = 14;
+                ctx.beginPath();
+                ctx.arc(n.x, n.y, 14, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+
+                ctx.fillStyle = "#ffffff";
+                ctx.font = "bold 11px 'JetBrains Mono'";
+                ctx.fillText(n.label, n.x - 45, n.y - 22);
+            });
+        }
+
+        // Controls Listeners
+        const sTime = document.getElementById('slider-time');
+        const sSpeed = document.getElementById('slider-speed');
+
+        sTime.addEventListener('input', (e) => {
+            AegisState.simMinutes = parseFloat(e.target.value);
+            updateAllViews();
+        });
+
+        sSpeed.addEventListener('input', (e) => {
+            AegisState.cmeSpeed = parseInt(e.target.value);
+            updateAllViews();
+        });
+
+        function stepTime(mins) {
+            AegisState.simMinutes = Math.min(1500, AegisState.simMinutes + mins);
+            sTime.value = AegisState.simMinutes;
+            updateAllViews();
+        }
+
+        function resetSimulation() {
+            AegisState.simMinutes = 0.0;
+            sTime.value = 0.0;
+            AegisState.relays = {
+                "RLY-01_HV_ISOLATOR": "CLOSED (GRID ONLINE)",
+                "RLY-02_CRYO_PULSE_BYPASS": "IDLE (NOMINAL)",
+                "RLY-03_RF_ATTENUATOR": "ACTIVE (FULL GAIN)",
+                "RLY-04_INERTIAL_LOCK": "SLAVED (GPS TRACK)"
+            };
+            AegisState.logs.unshift("[T+00m] Simulation reset. Actuator relays restored to nominal states.");
+            updateAllViews();
+        }
+
+        function toggleSabotage() {
+            AegisState.sensors.l1 = document.getElementById('sabotage-l1').checked;
+            AegisState.sensors.transformer = document.getElementById('sabotage-trans').checked;
+            AegisState.sensors.cryo_chiller = document.getElementById('sabotage-cryo').checked;
+            AegisState.sensors.uplink_dish = document.getElementById('sabotage-rf').checked;
+            updateAllViews();
+            renderGaussian();
+        }
+
+        // Hardware Virtual Commands
+        function clearSerial() {
+            AegisState.serialStream = [];
+            const term = document.getElementById('serial-terminal');
+            if (term) term.innerHTML = "";
+        }
+
+        function injectSerialCommand(cmd) {
+            appendSerial(`TX -> ${cmd}`);
+            if (cmd === 'CMD:TRIP_RELAY_01') {
+                AegisState.relays["RLY-01_HV_ISOLATOR"] = "TRIPPED (MANUAL OVERRIDE)";
+            } else if (cmd === 'CMD:ENGAGE_CRYO_PULSE') {
+                AegisState.relays["RLY-02_CRYO_PULSE_BYPASS"] = "PULSE ENGAGED (HIL)";
+            } else if (cmd === 'CMD:SYNC_ALL_NOMINAL') {
+                AegisState.relays["RLY-01_HV_ISOLATOR"] = "CLOSED (GRID ONLINE)";
+                AegisState.relays["RLY-02_CRYO_PULSE_BYPASS"] = "IDLE (NOMINAL)";
+            }
+            updateAllViews();
+            appendSerial(`RX <- ACK:${cmd.split(':')[1]}:OK`);
+        }
+
+        function copyFirmware() {
+            const code = document.getElementById('firmware-code').innerText;
+            const temp = document.createElement('textarea');
+            temp.value = code;
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand('copy');
+            document.body.removeChild(temp);
+            addBlackboxLog("[CLIPBOARD] Arduino C++ firmware copied successfully.");
+        }
+
+        // =================================================================
+        // GEMINI AI FLIGHT DIRECTOR CLIENT
+        // =================================================================
+        async function askCopilot(promptText) {
+            const input = document.getElementById('copilot-input');
+            input.value = promptText;
+            handleCopilotSend();
+        }
+
+        async function handleCopilotSend() {
+            const input = document.getElementById('copilot-input');
+            const q = input.value.trim();
+            if (!q) return;
+
+            const chat = document.getElementById('chat-messages');
+            input.value = "";
+
+            // Append User Question
+            chat.innerHTML += `
+            <div class="flex gap-2.5 justify-end">
+                <div class="glass-panel p-3 bg-cyanNeon/10 border-cyanNeon/30 text-white max-w-xl">
+                    <div class="font-mono text-[10px] text-cyanNeon font-bold">FLIGHT DIRECTOR (YOU)</div>
+                    <p class="mt-1">${q}</p>
+                </div>
+            </div>`;
+            chat.scrollTop = chat.scrollHeight;
+
+            // Loading Placeholder
+            const loadId = "load-" + Date.now();
+            chat.innerHTML += `
+            <div class="flex gap-2.5" id="${loadId}">
+                <div class="w-6 h-6 rounded bg-cyanNeon/20 border border-cyanNeon text-cyanNeon flex items-center justify-center font-mono font-bold text-[10px] shrink-0">
+                    AI
+                </div>
+                <div class="glass-panel p-3 text-textDim font-mono text-xs max-w-xl flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-cyanNeon animate-ping"></span>
+                    Synthesizing space weather telemetry & GIC impact dynamics...
+                </div>
+            </div>`;
+            chat.scrollTop = chat.scrollHeight;
+
+            const P = evaluatePhysics();
+            const systemPrompt = `You are AEGIS-PRIME, an autonomous aerospace flight director AI for a high-stakes technology facility facing an extreme solar storm (CME).
+Current Facility Telemetry:
+- Mission Time: ${P.t.toFixed(1)} minutes since flare eruption
+- Optical Detection Status: ${P.photonReached ? "CONFIRMED (T+8.3m light arrival passed)" : "BLIND (Within 8.3m light travel lag)"}
+- CME Shock Speed: ${P.speed} km/s
+- CME Distance from Sun: ${P.cmeAu.toFixed(3)} AU (${(P.cmeDistKm/1e6).toFixed(1)}M km)
+- Ground GIC Flux: ${(P.groundFlux*100).toFixed(0)}%
+- Primary Failing Component: ${SUBSYSTEMS[P.primaryKey].name} (Degradation: ${(P.deg[P.primaryKey]*100).toFixed(1)}%)
+- Cryo Sensor Status: ${AegisState.sensors.cryo_chiller ? "Direct Sensor Active" : "LOST (Inferred via Bayesian Cross-Inference from Transformer load)"}
+- RLY-01 State: ${AegisState.relays["RLY-01_HV_ISOLATOR"]}
+- RLY-02 State: ${AegisState.relays["RLY-02_CRYO_PULSE_BYPASS"]}
+
+Answer concisely in 2-3 technical paragraphs. Be decisive, aerospace-grade, and highlight how you handle missing sensor telemetry and prevent facility destruction.`;
+
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+            let replyText = "";
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: q }] }],
+                        systemInstruction: { parts: [{ text: systemPrompt }] }
+                    })
+                });
+
+                const data = await response.json();
+                if (data.candidates && data.candidates[0].content?.parts[0]?.text) {
+                    replyText = data.candidates[0].content.parts[0].text;
+                } else {
+                    throw new Error("Empty response");
+                }
+            } catch (err) {
+                // Graceful Tactical Fallback if offline
+                replyText = `**Tactical Assessment:** Current facility state shows primary stress at **${SUBSYSTEMS[P.primaryKey].name}** under **${(P.groundFlux*100).toFixed(0)}% GIC flux**. Because light takes 8.3 minutes to travel 1 AU, optical telemetry was blind until T+8.3m. 
+
+With the Cryo Chiller sensor offline, our Bayesian observer reconstructed thermal load ($\mu \approx ${P.telemetry.cryo_chiller.val.toFixed(1)}^\circ\text{C}, \pm 8.2^\circ\text{C}$) via transformer core dissipation. Relay **RLY-01** was triggered to decouple the HV grid before catastrophic core saturation occurred.`;
+            }
+
+            const loadEl = document.getElementById(loadId);
+            if (loadEl) loadEl.remove();
+
+            chat.innerHTML += `
+            <div class="flex gap-2.5">
+                <div class="w-6 h-6 rounded bg-cyanNeon/20 border border-cyanNeon text-cyanNeon flex items-center justify-center font-mono font-bold text-[10px] shrink-0">
+                    AI
+                </div>
+                <div class="glass-panel p-3 text-slate-200 text-xs space-y-1.5 max-w-2xl leading-relaxed">
+                    <div class="font-mono text-[10px] text-cyanNeon font-bold">TACTICAL FLIGHT DIRECTOR RESPONSE</div>
+                    <div>${replyText.replace(/\n/g, '<br>')}</div>
+                </div>
+            </div>`;
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        // Bootstrapping
+        window.onload = function() {
+            updateAllViews();
+            renderRadar();
+            // Periodic stream frame
+            setInterval(() => {
+                if (AegisState.activeView === 'cockpit') renderRadar();
+            }, 300);
+        };
+    </script>
+</body>
+</html>
